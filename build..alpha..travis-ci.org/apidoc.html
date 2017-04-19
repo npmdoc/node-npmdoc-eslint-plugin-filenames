@@ -51,7 +51,7 @@
 
         href="https://github.com/selaux/eslint-plugin-filenames"
 
-    >eslint-plugin-filenames (v1.1.0)</a>
+    >eslint-plugin-filenames (v1.2.0)</a>
 </h1>
 <h4>Eslint rule for consistent filenames.</h4>
 <div class="apidocSectionDiv"><a
@@ -123,17 +123,18 @@
     <li>description and source-code<pre class="apidocCodePre">match-exported = function (context) {
     return {
         &#x22;Program&#x22;: function (node) {
-            var transformName = context.options[0],
+            var transforms = getTransformsFromOptions(context.options[0]),
+                replacePattern = context.options[1] ? new RegExp(context.options[1]) : null,
                 filename = context.getFilename(),
                 absoluteFilename = path.resolve(filename),
                 parsed = parseFilename(absoluteFilename),
                 shouldIgnore = isIgnoredFilename(filename),
                 exportedName = getExportedName(node),
                 isExporting = Boolean(exportedName),
-                expectedExport = getStringToCheckAgainstExport(parsed),
-                transformed = transform(exportedName, transformName),
+                expectedExport = getStringToCheckAgainstExport(parsed, replacePattern),
+                transformedNames = transform(exportedName, transforms),
                 everythingIsIndex = exportedName === &#x27;index&#x27; &#x26;&#x26; parsed.name === &#x27;index&#x27;,
-                matchesExported = transformed === expectedExport || everythingIsIndex,
+                matchesExported = anyMatch(expectedExport, transformedNames) || everythingIsIndex,
                 reportIf = function (condition, messageForNormalFile, messageForIndexFile) {
                     var message = (!messageForIndexFile || !isIndexFile(parsed)) ? messageForNormalFile : messageForIndexFile;
 
@@ -141,16 +142,18 @@
                         context.report(node, message, {
                             name: parsed.base,
                             expectedExport: expectedExport,
-                            exportName: transformed,
-                            extension: parsed.ext
+                            exportName: transformedNames.join(&#x22;&#x27;, &#x27;&#x22;),
+                            extension: parsed.ext,
+                            whatToMatch: getWhatToMatchMessage(transforms)
                         });
                     }
                 };
 
             if (shouldIgnore) return;
+
             reportIf(
                 isExporting &#x26;&#x26; !matchesExported,
-                &#x22;Filename &#x27;{{expectedExport}}&#x27; must match the exported name &#x27;{{exportName}}&#x27;.&#x22;,
+                &#x22;Filename &#x27;{{expectedExport}}&#x27; must match {{whatToMatch}} &#x27;{{exportName}}&#x27;.&#x22;,
                 &#x22;The directory &#x27;{{expectedExport}}&#x27; must be named &#x27;{{exportName}}&#x27;, after the exported value of its index file.&#x22;
             );
         }
